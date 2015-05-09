@@ -1,150 +1,151 @@
-import re
 import sys
+import re
 
-class GRange(object):
-	start = 0
-	stop = 0
-	length = 0
-
-	def __init__(self, start, stop):
-		self.start = start
-		self.stop = stop
-		self.length = stop - start
-
-class GList(object):
-	name = ""
-	ranges = []
-
-	def __init__(self, name):
-		self.name = name
-
-	def reduce(self):
-		cover=[]
-		for i in range(1, len(self.ranges)):
-			if(self.ranges[i-1].stop > self.ranges[i].start):
-				self.ranges[i-1].stop = self.ranges[i].stop
-				self.ranges[i-1].length = self.ranges[i-1].stop - self.ranges[i-1].start
-				cover.append(i)
-		for i in range(len(cover)-1, 0, -1):
-			del self.ranges[cover[i]]
-
+inputname = sys.argv[1]
+f = open(inputname)
 
 #load file
-f=open("hs.gtf")
-input=f.readlines()
+inputdata = f.readlines()
+f.close()
 
-#initialize values
-coding_genes=[0,0,0,0,0,0,0,0,0,0]
-names1=["protein_coding", "IG_C_gene", "IG_D_gene", "IG_J_gene", "IG_V_gene", "TR_C_gene", "TR_D_gene", "TR_J_gene", "TR_V_gene"]
-coding_genes_sizes=[0,0,0,0,0,0,0,0,0,0]
+#prepare gentypes
+type1 = ["protein_coding", "IG_C_gene", "IG_D_gene", "IG_J_gene", "IG_V_gene", "TR_C_gene", "TR_D_gene", "TR_J_gene", "TR_V_gene"]
+type2 = ["snRNA", "rRNA", "snoRNA", "miRNA", "misc_RNA"]
+type3 = ["lincRNA", "non_coding", "processed_transcript", "antisense", "3prime_overlapping_ncrna", "sense_intronic", "sense_overlapping", "known_ncrna"]
+type4 = ["unitary_pseudogene", "IG_C_pseudogene", "translated_processed_pseudogene", "polymorphic_pseudogene", "TR_J_pseudogene", "IG_J_pseudogene", "TR_V_pseudogene", "IG_V_pseudogene", "pseudogene", "unprocessed_pseudogene", "transcribed_unprocessed_pseudogene", "translated_unprocessed_pseudogene", "transcribed_processed_pseudogene", "processed_pseudogene", "transcribed_unitary_pseudogene"]
 
-s_non_coding_genes=[0,0,0,0,0,0]
-names2=["snRNA", "rRNA", "snoRNA", "miRNA", "misc_RNA"]
-s_non_coding_genes_sizes=[0,0,0,0,0,0]
+#prepare counts
+count1 = [0,0,0,0,0,0,0,0,0]
+count2 = [0,0,0,0,0]
+count3 = [0,0,0,0,0,0,0,0]
+count4 = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+count5 = [0,0]
 
-l_non_coding_genes=[0,0,0,0,0,0,0,0,0]
-names3=["lincRNA", "non_coding", "processed_transcript", "antisense", "3prime_overlapping_ncrna", "sense_intronic", "sense_overlapping", "known_ncrna"]
-l_non_coding_genes_sizes=[0,0,0,0,0,0,0,0,0]
+#prepare lengths
+len1 = [0,0,0,0,0,0,0,0,0]
+len2 = [0,0,0,0,0]
+len3 = [0,0,0,0,0,0,0,0]
+len4 = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+len5 = [0,0]
 
-pseudo_genes=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-names4=["unitary_pseudogene", "IG_C_pseudogene", "translated_processed_pseudogene", "polymorphic_pseudogene", "TR_J_pseudogene", "IG_J_pseudogene", "TR_V_pseudogene", "IG_V_pseudogene", "pseudogene", "unprocessed_pseudogene", "transcribed_unprocessed_pseudogene", "translated_unprocessed_pseudogene", "transcribed_processed_pseudogene", "processed_pseudogene", "transcribed_unitary_pseudogene"]
-pseudo_genes_sizes=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+#prepare ends
+end1 = [0,0,0,0,0,0,0,0,0]
+end2 = [0,0,0,0,0]
+end3 = [0,0,0,0,0,0,0,0]
+end4 = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+end5 = [0,0]
 
-protein_coding_genes=[0,0]
+#parse file line by line
+for i in range (0, len(inputdata)):
+	if(not inputdata[i].startswith("#")):
+		#parse line
+		value = inputdata[i].split("\t")
 
-#initialize lists for each type of gene
-list1=[GList("protein_coding"),GList("IG_C_gene"),GList("IG_D_gene"),GList("IG_J_gene"),GList("IG_V_gene"),GList("TR_C_gene"),GList("TR_D_gene"),GList("TR_J_gene"),GList("TR_V_gene")] 
-list2=[GList("snRNA"),GList("rRNA"),GList("snoRNA"),GList("miRNA"),GList("misc_RNA")]
-list3=[GList("lincRNA"),GList("non_coding"),GList("processed_transcript"),GList("antisense"),GList("3prime_overlapping_ncrna"),GList("sense_intronic"),GList("sense_overlapping"),GList("known_ncrna")]
-list4=[GList("unitary_pseudogene"),GList("IG_C_pseudogene"),GList("transcribed_processed_pseudogene"),GList("polymorphic_pseudogene"),GList("TR_J_pseudogene"),GList("IG_J_pseudogene"),GList("TR_V_pseudogene"),GList("IG_V_pseudogene"),GList("pseudogene"),GList("unprocessed_pseudogene"),GList("transcribed_unprocessed_pseudogene"),GList("translated_unprocessed_pseudogene"),GList("transcribed_processed_pseudogene"),GList("processed_pseudogene"),GList("transcribed_unitary_pseudogene")]
+		start = int(value[3])
+		stop = int(value[4])
 
-#process line by line
-for i in range (0, 500):
-	if(not input[i].startswith("#")):
-		val=input[i].split("\t")
+		params = value[len(value)-1].split(";")
 
-		t=0
-		r=re.compile('.*biotype.*')
-		pieces=val[len(val)-1].split(";")
-		while(not r.match(pieces[t])):
-			t+=1
-		mytype=pieces[t].split(" ")[2][1:-1]
+		#find type of the record
+		biotype = re.compile(".*biotype.*")
+		t = 0
+		while(not biotype.match(params[t])):
+			t += 1
+		gentype = params[t].split(" ")[2][1:-1]
 
-		#coding genes stats
-		for j in range(0, len(names1)):
-			if(mytype == names1[j]):
-				coding_genes[0]+=1
-				coding_genes[j+1]+=1
-				rang=GRange(int(val[3]), int(val[4]))
-				list1[j].ranges.append(rang)
+		if(value[2] == "gene"):
+			#determine where the type fits
+			for g in range(0, len(type1)):
+				if(gentype == type1[g]):
+					count1[g] += 1
+					if (start < end1[g]):
+						start = end1[g]
+					if (stop < end1[g]):
+						stop = end1[g]
+					len1[g]+= (stop - start)
+					end1[g] = stop
 
-		#small non-coding genes stats
-		for j in range(0, len(names2)):
-			if(mytype == names2[j]):
-				s_non_coding_genes[0]+=1
-				s_non_coding_genes[j+1]+=1	
-				rang=GRange(int(val[3]), int(val[4]))
-				list2[j].ranges.append(rang)
+			for g in range(0, len(type2)):
+				if(gentype == type2[g]):
+					count2[g] += 2
+					if(start < end2[g]):
+						start = end2[g]
+					if(stop < end2[g]):
+						stop = end2[g]
+					len2[g] += (stop - start)
+					end2[g] = stop
 
-		#long non-coding genes stats	
-		for j in range(0, len(names3)):
-			if(mytype == names3[j]):
-				l_non_coding_genes[0]+=1
-				l_non_coding_genes[j+1]+=1
-				rang=GRange(int(val[3]), int(val[4]))
-				list3[j].ranges.append(rang)
+			for g in range(0, len(type3)):
+				if(gentype == type3[g]):
+					count3[g] += 3
+					if(start < end3[g]):
+						start = end3[g]
+					if(stop < end3[g]):
+						stop = end3[g]
+					len3[g] += (stop - start)
+					end3[g] = stop
 
-		#pseudogenes
-		for j in range(0, len(names4)):
-			if(mytype == names4[j]):
-				pseudo_genes[0]+=1
-				pseudo_genes[j+1]+=1
-				rang=GRange(int(val[3]), int(val[4]))
-				list4[j].ranges.append(rang)
-
-#make reductions and count lengths
-for i in range(0, len(list1)):
-	#list1[i].reduce()
-	for j in range(0, len(list1[i].ranges)):
-		#print coding_genes_sizes[i]
-		coding_genes_sizes[i]+=list1[i].ranges[j].length
-		#print coding_genes_sizes[i]
-	coding_genes_sizes[0]+=coding_genes_sizes[i]
-
-for i in range(0, len(list2)):
-	list2[i].reduce()
-	for j in range(0, len(list2[i].ranges)):
-		s_non_coding_genes_sizes[i]+=list2[i].ranges[j].length
-	s_non_coding_genes_sizes[0]+=s_non_coding_genes_sizes[i]
-
-#for i in range(0, len(list3)):
-#	list3[i].reduce()
-#	for j in range(0, len(list3[i].ranges)):
-#		l_non_coding_genes_sizes[i]+=list3[i].ranges[j].length
-#	l_non_coding_genes_sizes[0]+=l_non_coding_genes_sizes[i]
-
-#for i in range(0, len(list4)):
-#	list4[i].reduce()
-#	for j in range(0, len(list4[i].ranges)):
-#		pseudo_genes_sizes[i]+=list4[i].ranges[j].length
-#	pseudo_genes_sizes[0]+=pseudo_genes_sizes[i]
-
-for i in range (0, len(names1)):
-	print names1[i], coding_genes[i+1], coding_genes_sizes[i+1]
-print "Summary", coding_genes[0], coding_genes_sizes[0], "\n"
-
-for i in range (0, len(names2)):
-	print names2[i], s_non_coding_genes[i+1], s_non_coding_genes_sizes[i+1]
-print "Summary", s_non_coding_genes[0], s_non_coding_genes_sizes[0], "\n"
-
-for i in range (0, len(names3)):
-	print names3[i], l_non_coding_genes[i+1], l_non_coding_genes_sizes[i+1]
-print "Summary", l_non_coding_genes[0], l_non_coding_genes_sizes[0], "\n"
-
-for i in range (0, len(names4)):
-	print names4[i], pseudo_genes[i+1], pseudo_genes_sizes[i+1]
-print "Summary", pseudo_genes[0], pseudo_genes_sizes[0], "\n"
+			for g in range(0, len(type4)):
+				if(gentype == type4[g]):
+					count4[g] += 1
+					if(start < end4[g]):
+						start = end4[g]
+					if(stop < end4[g]):
+						stop = end4[g]
+					len4[g]  += (stop - start)
+					end4[g] = stop
+		elif((value[2] == "CDS") or (value[2] == "transcript")):
+			if(gentype == "protein_coding"):
+				if(value[2] == "transcript"):
+					count5[0] += 1
+					if(start < end5[0]):
+						start = end5[0]
+					if(stop < end5[0]):
+						stop = end5[0]
+					len5[0] += (stop - start)
+					end5[0] = stop
+				elif(value[2] == "CDS"):
+					count5[1] += 1
+					if(start < end5[1]):
+						start = end5[1]
+					if(stop < end5[1]):
+						stop = end5[1]
+					len5[1] += (stop - start)
+					end5[1] = stop
 
 
+#print results
+cnt_s1 = 0
+len_s1 = 0
+for i in range (0, len(type1)):
+	print type1[i], count1[i], len1[i]
+	cnt_s1 += count1[i]
+	len_s1 += len1[i]
+print "Summary", cnt_s1, len_s1, "\n"
 
-			
+cnt_s2 = 0
+len_s2 = 0
+for i in range (0, len(type2)):
+	print type2[i], count2[i], len2[i]
+	cnt_s2 += count2[i]
+	len_s2 += len2[i]
+print "Summary", cnt_s2, len_s2, "\n"
+
+cnt_s3 = 0
+len_s3 = 0
+for i in range (0, len(type3)):
+	print type3[i], count3[i], len3[i]
+	cnt_s3 += count3[i]
+	len_s3 += len3[i]
+print "Summary", cnt_s3, len_s3, "\n"
+
+cnt_s4 = 0
+len_s4 = 0
+for i in range (0, len(type4)):
+	print type4[i], count4[i], len4[i]
+	cnt_s4 += count4[i]
+	len_s4 += len4[i]
+print "Summary", cnt_s4, len_s4, "\n"
+
+print "Coding transcripts", count5[0], len5[0]
+print "CDS", count5[1], len5[1]
